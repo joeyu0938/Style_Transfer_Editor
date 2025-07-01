@@ -1,0 +1,79 @@
+{
+    "System_Setting":{
+        "Task":"img_inpaint",
+        "Load_path":"./",
+        "Task_status":"",
+        "verbose": false
+    },
+    "Model_Setting":{
+        "VAE":"madebyollin/sdxl-vae-fp16-fix",
+        "SDXL":"SG161222/RealVisXL_V5.0_Lightning",
+        "Differential": true,
+        "Ipadapter":[1.5,"h94/IP-Adapter"],
+        "Clipvision":"./models/Clip_vision/CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors",
+        "Controlnet":{
+            "Depth":[0.8,"diffusers/controlnet-depth-sdxl-1.0"],
+            "Lineart":[0.8,"ShermanG/ControlNet-Standard-Lineart-for-SDXL"],
+            "Canny":[0.8,"diffusers/controlnet-canny-sdxl-1.0"]
+        },
+        "control_guidance_start": 0.0,
+        "control_guidance_end": 1.0
+    },
+    "Path_Setting":{
+        "Image_folder":"Input/Hand_All/Image",
+        "Mask_folder":"Input/Hand_All/Mask",
+        "output_folder":"",
+        "Tmp_paths":["./Tmp/crop_vid","./Tmp/crop_mask","./Tmp/crop_origin","./Tmp/depth","./Tmp/canny","./Tmp/openpose","./Tmp/Origin_img","./Tmp/inpaint","./Tmp/lineart"]
+    },
+    "Config_Setting":{
+        "Edit_data": true,
+        "VLM": true,
+        "if_run_model": true,
+        "resolution_formod":1024,
+        "Width":1920,
+        "Height": 1280,
+        "prompt": "close-up of a human hand, detailed skin texture, natural lighting, realistic",
+        "prompt2": "A close-up look of one hand wearing glove",
+        "negprompt": "too bright,over saturation,distort components,gaskets,reflection,deformed iris, deformed pupils, semi-realistic, cgi, 3d, render, sketch, cartoon, drawing, anime), text, cropped, out of frame, worst quality, low quality, jpeg artifacts, ugly, duplicate, morbid, mutilated, extra fingers, mutated hands, poorly drawn hands, poorly drawn face, mutation, deformed, blurry, dehydrated, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, gross proportions, malformed limbs, missing arms, missing legs, extra arms, extra legs, fused fingers, too many fingers, long neck, UnrealisticDream",
+        "reference_img": "./Input/reference_img/Mass_gen"
+    },
+    "Data_Setting":{
+        "if_crop": true,
+        "save_crop": true,
+        "crop_scale": 1.5,
+        "crop_width": 512,
+        "crop_height": 512,
+        "Canny":{
+            "Detect_res":512,
+            "Image_res":512,
+            "Low_thres":100,
+            "High_thres":200
+        },
+        "Lineart":{
+            "Detect_res":512,
+            "Image_res":512,
+            "coarse": true
+        },
+        "Depth":{
+            "Detect_res":512,
+            "Image_res":512
+        },
+        "Dilate_Mask":{
+            "Kernal":512,
+            "Iter":512,
+            "Gaussian":0
+        },
+        "Inpaint":{
+            "Radius":1,
+            "fill": true,
+            "gray": false
+        },
+        "Dwpose":{
+            "Detect_res":512,
+            "Image_res":512,
+            "hand":true,
+            "body":true,
+            "face": true
+        }
+    }
+}
