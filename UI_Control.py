@@ -5,6 +5,8 @@ from PyQt6.QtGui import QStandardItemModel, QStandardItem,QFileSystemModel
 from UI import Ui_MainWindow
 from config_setup import Config_setup
 import os
+import io
+import json
 from glob import glob
 from Tools.tool import warning,info,critical
 import time
@@ -26,7 +28,10 @@ class UI_Controller:
         qmenu_contr = Qmenu_controller(ui,config)
         global graphic_contr
         graphic_contr = Graphic_controller(ui)
-
+        # global System_console_contr
+        # System_console_contr = System_Console_controller(ui)
+        global config_contr
+        config_contr = Config_controller(ui,config)
 
         MainWindow.show()
         app.exec()
@@ -34,6 +39,67 @@ class UI_Controller:
     def Shutdown():
         print("App Shutting down")
         sys.exit()
+
+class System_Console_controller():
+    def __init__(self,ui:Ui_MainWindow):
+        self.text_browser = ui.File_browser
+        self.old_stdout = sys.stdout # Memorize the default stdout stream
+        sys.stdout = self.buffer = io.StringIO()
+        
+        self.timer = QtCore.QTimer()        # 加入定時器
+        self.timer.timeout.connect(self.print_text)   # 設定定時要執行的 function
+        self.timer.start(2000)               # 啟用定時器，設定間隔時間為 500 毫秒
+
+    def print_text(self):
+        whatWasPrinted = self.buffer.getvalue() # Return a str containing the entire contents of the buffer.
+        self.text_browser.setText(whatWasPrinted)
+
+class Config_controller(QtWidgets.QWidget):
+    
+    signal = QtCore.pyqtSignal(QtWidgets.QPlainTextEdit)
+
+    def __init__(self,ui:Ui_MainWindow,config:Config_setup):
+        
+        super().__init__()
+        self.config= config 
+        self.Path_browser = ui.textBrowser_3
+        self.Config_browser= ui.textBrowser
+        self.Model_browser = ui.textBrowser_2
+        self.Path_enable = ui.Path_enable
+        self.Config_enable = ui.Config_enable
+        self.Model_enable = ui.Model_enable
+        self.lock = True
+
+
+        self.Refresh = ui.pushButton_16
+
+        self.Path_browser.setPlainText(json.dumps(config.path_setting,sort_keys=True, indent=2))
+        self.Config_browser.setPlainText(json.dumps(config.config_setting,sort_keys=True, indent=2))
+        self.Model_browser.setPlainText(json.dumps(config.model_setting,sort_keys=True, indent=2))
+        
+        
+        self.signal.connect(self.Setlock)
+
+        self.Refresh.clicked.connect(self.Refresh_configuration)
+        self.Path_enable.checkStateChanged.connect(lambda: self.signal.emit(self.Path_browser))
+        self.Config_enable.checkStateChanged.connect(lambda: self.signal.emit(self.Config_browser))
+        self.Model_enable.checkStateChanged.connect(lambda: self.signal.emit(self.Model_browser))
+
+        self.Path_browser.setDisabled(self.lock)
+        self.Config_browser.setDisabled(self.lock)
+        self.Model_browser.setDisabled(self.lock)
+
+    def Refresh_configuration(self):
+        path_setting = json.loads(self.Path_browser.toPlainText())
+        config_setting = json.loads(self.Config_browser.toPlainText())
+        model_setting = json.loads(self.Model_browser.toPlainText())
+        self.config.update(path_setting=path_setting,config_setting=config_setting,model_setting=model_setting)
+
+    def Setlock(self,item:QtWidgets.QPlainTextEdit):
+        if item.isEnabled() == False:
+            item.setEnabled(True)
+        else:
+            item.setEnabled(False)
 
 class Folder_controller:
 
@@ -131,12 +197,11 @@ class Graphic_controller:
                 self.error = True
                 return
             self.slider.setMaximum(len(self.images)-1)
-            self.slider.valueChanged.connect(self.folder_slider)
+            self.slider.sliderMoved.connect(self.load_folder)
             self.Current_path.setText(f"Current Folder Path: {path}")
             print(info() + f"Loading images in folder: {path}")
             self.error = False
             self.load_folder()
-
         elif os.path.isfile(path):
             self.Current_frame = 0
             self.slider.setRange(0, 100)
@@ -181,7 +246,7 @@ class Graphic_controller:
         self._player.durationChanged.connect(lambda: self.slider.setMaximum(self._player.duration())) 
         self.slider.sliderMoved.connect(lambda: self._player.setPosition(self.slider.value()))
         self.grview.show()
-    
+
     def position_change(self):
         self.slider.setValue(self._player.position())
         self.Current_frame = self._player.position()
@@ -189,33 +254,30 @@ class Graphic_controller:
 
     def load_image(self,path):
         # Ensure video widget is hidden when displaying an image
+        self.scene_img.clear()
         self.grview.setScene(self.scene_img)
         img = QtGui.QPixmap(path)
         img = img.scaled(self.grview.size(), QtCore.Qt.AspectRatioMode.KeepAspectRatio, QtCore.Qt.TransformationMode.SmoothTransformation)
-        self.scene_img.clear()
         self.scene_img.setSceneRect(0, 0, img.width(), img.height())
         self.scene_img.addPixmap(img)
         self.grview.show()
     
     def load_folder(self):
         # Ensure video widget is hidden when displaying an image
-        self.grview.setScene(self.scene_img)
-        if self.Current_frame >= len(self.images):
-            self.Current_frame = len(self.images)-1
-        elif self.Current_frame <= 0:
-            self.Current_frame = 0
-        img = QtGui.QPixmap(self.images[self.Current_frame])
-        img = img.scaled(self.grview.size(), QtCore.Qt.AspectRatioMode.KeepAspectRatio, QtCore.Qt.TransformationMode.SmoothTransformation)
-        self.scene_img.clear()
-        self.scene_img.setSceneRect(0, 0, img.width(), img.height())
-        self.scene_img.addPixmap(img)
-        self.slider.setValue(self.Current_frame)
-        self.grview.show()
-        
-    def folder_slider(self):
-        self.Current_frame = self.slider.value()
-        self.spin_button.setValue(self.Current_frame)
-        self.load_folder()
+        if self.task == "Folder":
+            self.Current_frame = self.slider.value()
+            self.spin_button.setValue(self.Current_frame)
+            self.scene_img.clear()
+            self.grview.setScene(self.scene_img)
+            if self.Current_frame >= len(self.images):
+                self.Current_frame = len(self.images)-1
+            elif self.Current_frame <= 0:
+                self.Current_frame = 0
+            img = QtGui.QPixmap(self.images[self.Current_frame])
+            img = img.scaled(self.grview.size(), QtCore.Qt.AspectRatioMode.KeepAspectRatio, QtCore.Qt.TransformationMode.SmoothTransformation)
+            self.scene_img.setSceneRect(0, 0, img.width(), img.height())
+            self.scene_img.addPixmap(img)
+            self.grview.show()
 
     def play(self):
         if self.task == "Video":
@@ -232,6 +294,7 @@ class Graphic_controller:
             self._player.setPosition(self.Current_frame)
         elif self.task == "Folder" and not self.error:
             self.Current_frame += 1
+            self.slider.setSliderPosition(self.Current_frame)
             self.load_folder()
 
     def prev(self):
@@ -240,6 +303,7 @@ class Graphic_controller:
             self._player.setPosition(self.Current_frame)
         elif self.task == "Folder" and not self.error:
             self.Current_frame -= 1
+            self.slider.setSliderPosition(self.Current_frame)
             self.load_folder()
 
     def spin_change(self):
@@ -247,4 +311,5 @@ class Graphic_controller:
             self._player.setPosition(int(self.spin_button.value()*1000))
         elif self.task == "Folder" and not self.error:
             self.Current_frame = self.spin_button.value()
+            self.slider.setSliderPosition(self.Current_frame)
             self.load_folder()
