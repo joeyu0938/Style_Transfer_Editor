@@ -65,9 +65,11 @@ class Config_controller(QtWidgets.QWidget):
         self.Path_browser = ui.textBrowser_3
         self.Config_browser= ui.textBrowser
         self.Model_browser = ui.textBrowser_2
+        self.System_browser = ui.textBrowser_System_Conifg
         self.Path_enable = ui.Path_enable
         self.Config_enable = ui.Config_enable
         self.Model_enable = ui.Model_enable
+        self.System_enable = ui.System_enable
         self.lock = True
 
 
@@ -76,6 +78,7 @@ class Config_controller(QtWidgets.QWidget):
         self.Path_browser.setPlainText(json.dumps(config.path_setting,sort_keys=True, indent=2))
         self.Config_browser.setPlainText(json.dumps(config.config_setting,sort_keys=True, indent=2))
         self.Model_browser.setPlainText(json.dumps(config.model_setting,sort_keys=True, indent=2))
+        self.System_browser.setPlainText(json.dumps(config.system_setting,sort_keys=True, indent=2))
         
         
         self.signal.connect(self.Setlock)
@@ -84,16 +87,19 @@ class Config_controller(QtWidgets.QWidget):
         self.Path_enable.checkStateChanged.connect(lambda: self.signal.emit(self.Path_browser))
         self.Config_enable.checkStateChanged.connect(lambda: self.signal.emit(self.Config_browser))
         self.Model_enable.checkStateChanged.connect(lambda: self.signal.emit(self.Model_browser))
+        self.System_enable.checkStateChanged.connect(lambda: self.signal.emit(self.System_browser))
 
         self.Path_browser.setDisabled(self.lock)
         self.Config_browser.setDisabled(self.lock)
         self.Model_browser.setDisabled(self.lock)
+        self.System_browser.setDisabled(self.lock)
 
     def Refresh_configuration(self):
         path_setting = json.loads(self.Path_browser.toPlainText())
         config_setting = json.loads(self.Config_browser.toPlainText())
         model_setting = json.loads(self.Model_browser.toPlainText())
-        self.config.update(path_setting=path_setting,config_setting=config_setting,model_setting=model_setting)
+        system_setting = json.loads(self.System_browser.toPlainText())
+        self.config.update(path_setting=path_setting,config_setting=config_setting,model_setting=model_setting,system_setting=system_setting)
 
     def Setlock(self,item:QtWidgets.QPlainTextEdit):
         if item.isEnabled() == False:
