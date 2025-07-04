@@ -1,9 +1,11 @@
 {
     "System_Setting":{
         "Task":"img_inpaint",
-        "Load_path":"./",
+        "Show_UI": true,
+        "Viewer_load_path":"./",
         "Task_status":"",
-        "verbose": false
+        "verbose": false,
+        "Device": 0
     },
     "Model_Setting":{
         "VAE":"madebyollin/sdxl-vae-fp16-fix",
@@ -20,10 +22,10 @@
         "control_guidance_end": 1.0
     },
     "Path_Setting":{
-        "Image_folder":"Input/Hand_All/Image",
-        "Mask_folder":"Input/Hand_All/Mask",
+        "Image_folder":"Input/Test_All/Image",
+        "Mask_folder":"Input/Test_All/Mask",
         "output_folder":"",
-        "Tmp_paths":["./Tmp/crop_vid","./Tmp/crop_mask","./Tmp/crop_origin","./Tmp/depth","./Tmp/canny","./Tmp/openpose","./Tmp/Origin_img","./Tmp/inpaint","./Tmp/lineart"]
+        "Tmp_paths":["/Tmp/crop_vid","/Tmp/Mask","/Tmp/Image","/Tmp/depth","/Tmp/canny","/Tmp/dwpose","/Tmp/lineart"]
     },
     "Config_Setting":{
         "Edit_data": true,
@@ -39,10 +41,6 @@
     },
     "Data_Setting":{
         "if_crop": true,
-        "save_crop": true,
-        "crop_scale": 1.5,
-        "crop_width": 512,
-        "crop_height": 512,
         "Canny":{
             "Detect_res":512,
             "Image_res":512,
@@ -54,18 +52,23 @@
             "Image_res":512,
             "coarse": true
         },
+        "Crop":{
+            "Crop_scale":1.5,
+            "Crop_width":512,
+            "Crop_height":512
+        },
         "Depth":{
             "Detect_res":512,
             "Image_res":512
         },
         "Dilate_Mask":{
-            "Kernal":512,
-            "Iter":512,
-            "Gaussian":0
+            "Kernal":5,
+            "Iter":3,
+            "Gaussian":10
         },
         "Inpaint":{
             "Radius":1,
-            "fill": true,
+            "fill": false,
             "gray": false
         },
         "Dwpose":{

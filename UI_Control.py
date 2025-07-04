@@ -4,6 +4,7 @@ from PyQt6.QtMultimedia import *
 from PyQt6.QtGui import QStandardItemModel, QStandardItem,QFileSystemModel
 from UI import Ui_MainWindow
 from config_setup import Config_setup
+from data_edit import Data_Edit
 import os
 import io
 import json
@@ -30,8 +31,11 @@ class UI_Controller:
         graphic_contr = Graphic_controller(ui)
         # global System_console_contr
         # System_console_contr = System_Console_controller(ui)
+        global Dataedit_contr
+        Dataedit_contr = Dataedit_controller(ui,config)
         global config_contr
         config_contr = Config_controller(ui,config)
+        
 
         MainWindow.show()
         app.exec()
@@ -40,23 +44,207 @@ class UI_Controller:
         print("App Shutting down")
         sys.exit()
 
-class System_Console_controller():
-    def __init__(self,ui:Ui_MainWindow):
-        self.text_browser = ui.File_browser
-        self.old_stdout = sys.stdout # Memorize the default stdout stream
-        sys.stdout = self.buffer = io.StringIO()
+class Dataedit_controller(Data_Edit):
+
+    def __init__(self,ui:Ui_MainWindow,config:Config_setup):
+
+
+        self.Mask_path = config.path_setting["Mask_folder"]
+        self.Image_path = config.path_setting["Image_folder"]
+        self.Output_path = config.path_setting["output_folder"]
         
-        self.timer = QtCore.QTimer()        # 加入定時器
-        self.timer.timeout.connect(self.print_text)   # 設定定時要執行的 function
-        self.timer.start(2000)               # 啟用定時器，設定間隔時間為 500 毫秒
+        super().__init__(config)
+        self.Canny_run = ui.Push_1
+        self.Lineart_run = ui.Push_2
+        self.Depth_run = ui.Push_3
+        self.Dilate_run = ui.Push_4
+        self.Inpaint_run = ui.Push_5
+        self.Dwpose_run = ui.Push_6
 
-    def print_text(self):
-        whatWasPrinted = self.buffer.getvalue() # Return a str containing the entire contents of the buffer.
-        self.text_browser.setText(whatWasPrinted)
+        self.ui = ui
+        #Set up Canny 
+        self.ui.Detect_res_1.setText(str(self.config.data_setting["Canny"]["Detect_res"]))
+        self.ui.Image_res_1.setText(str(self.config.data_setting["Canny"]["Image_res"]))
+        self.ui.Low_thres_1.setText(str(self.config.data_setting["Canny"]["Low_thres"]))
+        self.ui.High_thres_1.setText(str(self.config.data_setting["Canny"]["High_thres"]))
+        #Set up Lineart
+        self.ui.Detect_res_2.setText(str(self.config.data_setting["Lineart"]["Detect_res"]))
+        self.ui.Image_res_2.setText(str(self.config.data_setting["Lineart"]["Image_res"]))
+        self.ui.coarse_2.setText(str(self.config.data_setting["Lineart"]["coarse"]))
+        #Set up Mask Area Crop
+        self.ui.Crop_scale.setText(str(self.config.data_setting["Crop"]["Crop_scale"]))
+        self.ui.Crop_width.setText(str(self.config.data_setting["Crop"]["Crop_width"]))
+        self.ui.Crop_height.setText(str(self.config.data_setting["Crop"]["Crop_height"]))
+        #Set up Depth
+        self.ui.Detect_res_3.setText(str(self.config.data_setting["Depth"]["Detect_res"]))
+        self.ui.Image_res_3.setText(str(self.config.data_setting["Depth"]["Image_res"]))
+        #Set up Dilate Mask
+        self.ui.Kernal_3.setText(str(self.config.data_setting["Dilate_Mask"]["Kernal"]))
+        self.ui.Iter_3.setText(str(self.config.data_setting["Dilate_Mask"]["Iter"]))
+        self.ui.Gaussian_blur_3.setText(str(self.config.data_setting["Dilate_Mask"]["Gaussian"]))
+        #Set up Inpaint
+        self.ui.radius_5.setText(str(self.config.data_setting["Inpaint"]["Radius"]))
+        #Set up Dwpose
+        self.ui.Detect_res_6.setText(str(self.config.data_setting["Dwpose"]["Detect_res"]))
+        self.ui.Image_res_6.setText(str(self.config.data_setting["Dwpose"]["Image_res"]))
+        self.ui.radioButton_hand.setChecked(self.config.data_setting["Dwpose"]["hand"])
+        self.ui.radioButton_body.setChecked(self.config.data_setting["Dwpose"]["body"])
+        self.ui.radioButton_face.setChecked(self.config.data_setting["Dwpose"]["face"])
 
-class Config_controller(QtWidgets.QWidget):
+        thread_canny = QtCore.QThread()  
+        thread_canny.run = self.SendCanny    
+        thread_lienart = QtCore.QThread()   
+        thread_lienart.run = self.SendLineart     
+        thread_depth = QtCore.QThread()   
+        thread_depth.run = self.SendDepth  
+        thread_dwpose = QtCore.QThread()   
+        thread_dwpose.run = self.SendDWpose  
+        thread_dilate = QtCore.QThread()   
+        thread_dilate.run = self.SendDilate
+        thread_inpaint = QtCore.QThread()   
+        thread_inpaint.run = self.SendInpaint
+        thread_crop = QtCore.QThread()   
+        thread_crop.run = self.SendCrop
+        self.ui.Push_1.clicked.connect(lambda: thread_canny.start())
+        self.ui.Push_2.clicked.connect(lambda: thread_lienart.start())
+        self.ui.Push_3.clicked.connect(lambda: thread_depth.start())
+        self.ui.Push_4.clicked.connect(lambda: thread_dilate.start())
+        self.ui.Push_5.clicked.connect(lambda: thread_inpaint.start())
+        self.ui.Push_6.clicked.connect(lambda: thread_dwpose.start())
+        self.ui.Push_crop.clicked.connect(lambda: thread_crop.start())
     
-    signal = QtCore.pyqtSignal(QtWidgets.QPlainTextEdit)
+    
+
+    def SendCanny(self):
+        try:
+            images = glob(self.Image_path+'/*')
+            self.config.data_setting["Canny"]["Detect_res"] = int(self.ui.Detect_res_1.text())
+            self.config.data_setting["Canny"]["Image_res"] = int(self.ui.Image_res_1.text())
+            self.config.data_setting["Canny"]["Low_thres"] = int(self.ui.Low_thres_1.text())
+            self.config.data_setting["Canny"]["High_thres"] = int(self.ui.High_thres_1.text())
+            self.Canny(images,detect_res=int(self.ui.Detect_res_1.text()),
+                    image_res=int(self.ui.Image_res_1.text()),
+                    low_thres=int(self.ui.Low_thres_1.text()),
+                    high_thres=int(self.ui.High_thres_1.text()),
+                    UI_Bar= self.ui.progressBar_1
+                    )
+            self.config.update(data_setting=self.config.data_setting)
+            print(info() + "Finish Canny")
+        except:
+            print(critical() + " Canny error")
+    
+    def SendLineart(self):
+        try:
+            images = glob(self.Image_path+'/*')
+            self.config.data_setting["Lineart"]["Detect_res"] = int(self.ui.Detect_res_2.text())
+            self.config.data_setting["Lineart"]["Image_res"] = int(self.ui.Image_res_2.text())
+            self.Lineart(images,detect_res=int(self.ui.Detect_res_2.text()),
+                    image_res=int(self.ui.Image_res_2.text()),
+                    UI_Bar= self.ui.progressBar_2
+                    )
+            self.config.update(data_setting=self.config.data_setting)
+            print(info() + "Finish Lineart")
+        except  Exception as e:
+            print(critical() + " Lineart error: " + f'{e}' )
+
+    def SendDepth(self):
+        try:
+            images = glob(self.Image_path+'/*')
+            self.config.data_setting["Depth"]["Detect_res"] = int(self.ui.Detect_res_3.text())
+            self.config.data_setting["Depth"]["Image_res"] = int(self.ui.Image_res_3.text())
+            self.Depth(images,detect_res=int(self.ui.Detect_res_3.text()),
+                    image_res=int(self.ui.Image_res_3.text()),
+                    UI_Bar= self.ui.progressBar_3
+                    )
+            self.config.update(data_setting=self.config.data_setting)
+            print(info() + "Finish Depth")
+        except:
+            print(critical() + " Depth error")
+    
+    def SendCrop(self):
+        # try:
+        masks = glob(self.Mask_path+'/*')
+        images = glob(self.Image_path+'/*')
+        self.config.data_setting["Crop"]["Crop_scale"] = float(self.ui.Crop_scale.text())
+        self.config.data_setting["Crop"]["Crop_width"] = int(self.ui.Crop_width.text())
+        self.config.data_setting["Crop"]["Crop_height"] = int(self.ui.Crop_height.text())
+        
+        self.Crop(images,masks,
+                crop_scale= float(self.ui.Crop_scale.text()),
+                crop_width= int(self.ui.Crop_width.text()),
+                crop_height= int(self.ui.Crop_height.text()),
+                UI_Bar= self.ui.progressBar_crop
+                )
+        print(info() + "Finish Cropping ")
+        print(info() + "Finish Reset Image&MaskFolder (If you hope to use original mask.Please modified config file before running)")
+        self.config.path_setting["Image_folder"] = self.config.path_setting["output_folder"] + f'/Tmp/Image'
+        self.config.path_setting["Mask_folder"] = self.config.path_setting["output_folder"] + f'/Tmp/Mask'
+        self.config.update(data_setting=self.config.data_setting,path_setting=self.config.path_setting)
+        config_contr.setPlainText()
+
+        # except  Exception as e:
+        #     print(critical() + " Crop error: " + f'{e}')
+
+    def SendDilate(self):
+        try:
+            masks = glob(self.Mask_path+'/*')
+            self.config.data_setting["Dilate_Mask"]["Kernal"] = int(self.ui.Kernal_3.text())
+            self.config.data_setting["Dilate_Mask"]["Iter"] = int(self.ui.Iter_3.text())
+            self.config.data_setting["Dilate_Mask"]["Gaussian"] = int(self.ui.Gaussian_blur_3.text())
+            
+            self.Dilate(masks,kernal=int(self.ui.Kernal_3.text()),
+                    iter=int(self.ui.Iter_3.text()),
+                    gaussian=int(self.ui.Gaussian_blur_3.text()),
+                    UI_Bar= self.ui.progressBar_4
+                    )
+            print(info() + "Finish Dilate")
+            print(info() + "Finish Reset Mask Folder (If you hope to use original mask.Please modified config file before running)")
+            self.config.path_setting["Mask_folder"] = self.config.path_setting["output_folder"] + f'/Tmp/Mask'
+            self.config.update(data_setting=self.config.data_setting,path_setting=self.config.path_setting)
+            config_contr.setPlainText()
+
+        except  Exception as e:
+            print(critical() + " Dilate error: " + f'{e}')
+
+    def SendInpaint(self):
+        try:
+            images = glob(self.Image_path+'/*')
+            masks = glob(self.Mask_path+'/*')
+            self.config.data_setting["Inpaint"]["Radius"] = int(self.ui.radius_5.text())
+            self.Inpaint(images,masks,radius=int(self.ui.radius_5.text()),
+                    UI_Bar= self.ui.progressBar_5
+                    )
+            print(info() + "Finish Inpaint")
+            print(info() + "Finish Reset Image Folder (If you hope to use original mask.Please modified config file before running)")
+            self.config.path_setting["Image_folder"] = self.config.path_setting["output_folder"] + f'/Tmp/Image'
+            self.config.update(data_setting=self.config.data_setting,path_setting=self.config.path_setting)
+            config_contr.setPlainText()
+        except  Exception as e:
+            print(critical() + " Inpaint error: " + f'{e}')
+
+    def SendDWpose(self):
+        try:
+            images = glob(self.Image_path+'/*')
+            self.config.data_setting["Dwpose"]["Detect_res"] = int(self.ui.Detect_res_6.text())
+            self.config.data_setting["Dwpose"]["Image_res"] = int(self.ui.Image_res_6.text())
+            self.config.data_setting["Dwpose"]["hand"] = self.ui.radioButton_hand.isChecked()
+            self.config.data_setting["Dwpose"]["body"] = self.ui.radioButton_body.isChecked()
+            self.config.data_setting["Dwpose"]["face"] = self.ui.radioButton_face.isChecked()
+            self.Dwpose(images,detect_res=int(self.ui.Detect_res_6.text()),
+                    image_res=int(self.ui.Image_res_6.text()),
+                    hand=self.ui.radioButton_hand.isChecked(),
+                    body=self.ui.radioButton_body.isChecked(),
+                    face=self.ui.radioButton_face.isChecked(),
+                    UI_Bar= self.ui.progressBar_6
+                    )
+            self.config.update(data_setting=self.config.data_setting)
+            print(info() + "Finish Dwpose")
+        except:
+            print(critical() + " Dwpose error")
+
+
+class Config_controller():
+    
 
     def __init__(self,ui:Ui_MainWindow,config:Config_setup):
         
@@ -81,13 +269,12 @@ class Config_controller(QtWidgets.QWidget):
         self.System_browser.setPlainText(json.dumps(config.system_setting,sort_keys=True, indent=2))
         
         
-        self.signal.connect(self.Setlock)
 
         self.Refresh.clicked.connect(self.Refresh_configuration)
-        self.Path_enable.checkStateChanged.connect(lambda: self.signal.emit(self.Path_browser))
-        self.Config_enable.checkStateChanged.connect(lambda: self.signal.emit(self.Config_browser))
-        self.Model_enable.checkStateChanged.connect(lambda: self.signal.emit(self.Model_browser))
-        self.System_enable.checkStateChanged.connect(lambda: self.signal.emit(self.System_browser))
+        self.Path_enable.checkStateChanged.connect(lambda: self.Setlock(self.Path_browser))
+        self.Config_enable.checkStateChanged.connect(lambda: self.Setlock(self.Config_browser))
+        self.Model_enable.checkStateChanged.connect(lambda: self.Setlock(self.Model_browser))
+        self.System_enable.checkStateChanged.connect(lambda: self.Setlock(self.System_browser))
 
         self.Path_browser.setDisabled(self.lock)
         self.Config_browser.setDisabled(self.lock)
@@ -100,6 +287,13 @@ class Config_controller(QtWidgets.QWidget):
         model_setting = json.loads(self.Model_browser.toPlainText())
         system_setting = json.loads(self.System_browser.toPlainText())
         self.config.update(path_setting=path_setting,config_setting=config_setting,model_setting=model_setting,system_setting=system_setting)
+        self.setPlainText()
+
+    def setPlainText(self):
+        self.Path_browser.setPlainText(json.dumps(self.config.path_setting,sort_keys=True, indent=2))
+        self.Config_browser.setPlainText(json.dumps(self.config.config_setting,sort_keys=True, indent=2))
+        self.Model_browser.setPlainText(json.dumps(self.config.model_setting,sort_keys=True, indent=2))
+        self.System_browser.setPlainText(json.dumps(self.config.system_setting,sort_keys=True, indent=2))
 
     def Setlock(self,item:QtWidgets.QPlainTextEdit):
         if item.isEnabled() == False:
@@ -115,7 +309,7 @@ class Folder_controller:
         self.verbose = config.system_setting["verbose"]
         self.config = config
         self.folder_viewer = QFileSystemModel()
-        self.folder_viewer.setRootPath(self.config.system_setting["Load_path"])
+        self.folder_viewer.setRootPath(self.config.system_setting["Viewer_load_path"])
         self.treeview.setModel(self.folder_viewer)
         self.update()
 
@@ -127,8 +321,8 @@ class Folder_controller:
 
     def update(self):
         #set folder viwer
-        print(info() + f"Updating Folder viewer {self.config.system_setting["Load_path"]}")
-        self.treeview.setRootIndex(self.folder_viewer.index(self.config.system_setting["Load_path"]))
+        print(info() + f"Updating Folder viewer {self.config.system_setting["Viewer_load_path"]}")
+        self.treeview.setRootIndex(self.folder_viewer.index(self.config.system_setting["Viewer_load_path"]))
         
 class Qmenu_controller:
     
@@ -142,13 +336,13 @@ class Qmenu_controller:
     def open_folder(self):
         filePath = QtWidgets.QFileDialog.getExistingDirectory()  # 選擇檔案對話視窗
         print(info() + f'Opening Folder" {filePath}')
-        self.config.system_setting["Load_path"] = filePath
+        self.config.system_setting["Viewer_load_path"] = filePath
         folder_contr.update()
 
     def open_file(self):
         filePath,type = QtWidgets.QFileDialog.getOpenFileName()  # 選擇檔案對話視窗
         print(info() + f'Opening Folder" {filePath}')
-        self.config.system_setting["Load_path"] = filePath
+        self.config.system_setting["Viewer_load_path"] = filePath
         folder_contr.update()
 
     def shutdown(self):
