@@ -49,9 +49,6 @@ class Dataedit_controller(Data_Edit):
     def __init__(self,ui:Ui_MainWindow,config:Config_setup):
 
 
-        self.Mask_path = config.path_setting["Mask_folder"]
-        self.Image_path = config.path_setting["Image_folder"]
-        self.Output_path = config.path_setting["output_folder"]
         
         super().__init__(config)
         self.Canny_run = ui.Push_1
@@ -117,7 +114,7 @@ class Dataedit_controller(Data_Edit):
 
     def SendCanny(self):
         try:
-            images = glob(self.Image_path+'/*')
+            images = glob(self.config.path_setting["Image_folder"]+'/*')
             self.config.data_setting["Canny"]["Detect_res"] = int(self.ui.Detect_res_1.text())
             self.config.data_setting["Canny"]["Image_res"] = int(self.ui.Image_res_1.text())
             self.config.data_setting["Canny"]["Low_thres"] = int(self.ui.Low_thres_1.text())
@@ -135,7 +132,7 @@ class Dataedit_controller(Data_Edit):
     
     def SendLineart(self):
         try:
-            images = glob(self.Image_path+'/*')
+            images = glob(self.config.path_setting["Image_folder"]+'/*')
             self.config.data_setting["Lineart"]["Detect_res"] = int(self.ui.Detect_res_2.text())
             self.config.data_setting["Lineart"]["Image_res"] = int(self.ui.Image_res_2.text())
             self.Lineart(images,detect_res=int(self.ui.Detect_res_2.text()),
@@ -149,7 +146,7 @@ class Dataedit_controller(Data_Edit):
 
     def SendDepth(self):
         try:
-            images = glob(self.Image_path+'/*')
+            images = glob(self.config.path_setting["Image_folder"]+'/*')
             self.config.data_setting["Depth"]["Detect_res"] = int(self.ui.Detect_res_3.text())
             self.config.data_setting["Depth"]["Image_res"] = int(self.ui.Image_res_3.text())
             self.Depth(images,detect_res=int(self.ui.Detect_res_3.text()),
@@ -163,8 +160,8 @@ class Dataedit_controller(Data_Edit):
     
     def SendCrop(self):
         # try:
-        masks = glob(self.Mask_path+'/*')
-        images = glob(self.Image_path+'/*')
+        masks = glob(self.config.path_setting["Mask_folder"]+'/*')
+        images = glob(self.config.path_setting["Image_folder"]+'/*')
         self.config.data_setting["Crop"]["Crop_scale"] = float(self.ui.Crop_scale.text())
         self.config.data_setting["Crop"]["Crop_width"] = int(self.ui.Crop_width.text())
         self.config.data_setting["Crop"]["Crop_height"] = int(self.ui.Crop_height.text())
@@ -187,7 +184,7 @@ class Dataedit_controller(Data_Edit):
 
     def SendDilate(self):
         try:
-            masks = glob(self.Mask_path+'/*')
+            masks = glob(self.config.path_setting["Mask_folder"]+'/*')
             self.config.data_setting["Dilate_Mask"]["Kernal"] = int(self.ui.Kernal_3.text())
             self.config.data_setting["Dilate_Mask"]["Iter"] = int(self.ui.Iter_3.text())
             self.config.data_setting["Dilate_Mask"]["Gaussian"] = int(self.ui.Gaussian_blur_3.text())
@@ -208,8 +205,8 @@ class Dataedit_controller(Data_Edit):
 
     def SendInpaint(self):
         try:
-            images = glob(self.Image_path+'/*')
-            masks = glob(self.Mask_path+'/*')
+            images = glob(self.config.path_setting["Image_folder"]+'/*')
+            masks = glob(self.config.path_setting["Mask_folder"]+'/*')
             self.config.data_setting["Inpaint"]["Radius"] = int(self.ui.radius_5.text())
             self.Inpaint(images,masks,radius=int(self.ui.radius_5.text()),
                     UI_Bar= self.ui.progressBar_5
@@ -224,7 +221,7 @@ class Dataedit_controller(Data_Edit):
 
     def SendDWpose(self):
         try:
-            images = glob(self.Image_path+'/*')
+            images = glob(self.config.path_setting["Image_folder"]+'/*')
             self.config.data_setting["Dwpose"]["Detect_res"] = int(self.ui.Detect_res_6.text())
             self.config.data_setting["Dwpose"]["Image_res"] = int(self.ui.Image_res_6.text())
             self.config.data_setting["Dwpose"]["hand"] = self.ui.radioButton_hand.isChecked()
@@ -437,14 +434,17 @@ class Graphic_controller:
         self._videoitem = QtMultimediaWidgets.QGraphicsVideoItem()
         self.scene_vid.clear()
         self.scene_vid.addItem(self._videoitem)
-        self.grview.setScene(self.scene_vid)
+        
         self._player = QtMultimedia.QMediaPlayer()
         self._player.setVideoOutput(self._videoitem)
         self._player.setSource(QtCore.QUrl.fromLocalFile(path))
-        self.grview.fitInView(self._videoitem, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
         self._player.positionChanged.connect(self.position_change)
         self._player.durationChanged.connect(lambda: self.slider.setMaximum(self._player.duration())) 
         self.slider.sliderMoved.connect(lambda: self._player.setPosition(self.slider.value()))
+        
+        self._videoitem.setSize(QtCore.QSizeF(self.grview.size()))
+        self.scene_vid.setSceneRect(self._videoitem.boundingRect())
+        self.grview.setScene(self.scene_vid)
         self.grview.show()
 
     def position_change(self):

@@ -157,6 +157,7 @@ class Data_Edit:
                 UI_Bar.setValue(i)
                 
             name = os.path.basename(images[i])
+            name = os.path.splitext(name)[0]
             
             if if_crop == True:
                 mask = cv2.imread(masks[i])
