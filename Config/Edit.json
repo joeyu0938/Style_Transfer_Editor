@@ -31,12 +31,13 @@
             ]
         },
         "control_guidance_start": 0.0,
-        "control_guidance_end": 1.0
+        "control_guidance_end": 1.0,
+        "VLM": "Qwen/Qwen2.5-VL-3B-Instruct"
     },
     "Path_Setting": {
         "Image_folder": "Input/Test_All/Image",
         "Mask_folder": "Input/Test_All/Mask",
-        "output_folder": "./Output/20250706_070323",
+        "output_folder": "./Output/20250707_120806",
         "Tmp_paths": [
             "/Tmp/crop_vid",
             "/Tmp/Mask",

@@ -20,7 +20,6 @@ class Config_setup:
         parser = argparse.ArgumentParser()
         parser.add_argument("--Setting", type=str, default= './Config/config.json', help="Base config setting")
         self.args = parser.parse_args()
-
         self.Set_json(self.args.Setting,if_show)
 
     def reload(self,if_show=False):
@@ -45,7 +44,7 @@ class Config_setup:
 
     def Set_json(self,json_file,if_show):
         # Load json
-        print(f"Loading json => {json_file}...")
+        print(info() + f"Loading json => {json_file}...")
         
         self.config = tools.load_json(json_file)
         
