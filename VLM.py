@@ -18,6 +18,7 @@ class VLM():
     def __init__(self,config:Config_setup):
         self.config = config
         self.history = dict()
+        self.prompt_dict = dict()
         self.vlm_name = self.config.model_setting["VLM"]
         self.rules = "You are a helpful assistant. If user asks for describing image, " \
         "please only output(response) in the format of json dictionary with prompt1 and prompt2 keys"
@@ -63,16 +64,16 @@ class VLM():
         with open(self.config.path_setting["output_folder"] + f'/prompt.json', "w") as outfile:
             json.dump(self.history, outfile, sort_keys=True, indent=2)
 
-    def set_prompt(self,prompt:str):
+    def set_prompt(self,prompt:str,image_path=None):
         
         try:
             p = prompt.split('{')[1]
             p = p.split('}')[0]
             p = '{' + p + '}'
-            self.prompt_dict = json.loads(p)
-            print(info() + "Successfully set prompt dict ")
-            print(info() + f"   -{self.prompt_dict["prompt1"]}")
-            print(info() + f"   -{self.prompt_dict["prompt2"]}")
+            self.prompt_dict[f"{image_path}"] = json.loads(p)
+            print(info() + f"Successfully set {image_path} prompt dict ")
+            print(info() + f"   -{self.prompt_dict[f"{image_path}"]["prompt1"]}")
+            print(info() + f"   -{self.prompt_dict[f"{image_path}"]["prompt2"]}")
         except Exception as e:
             print(critical() + "Json dictionary(Prompt1&2) from VLM incorrect (Modified prompt and run again)")
             
@@ -106,6 +107,6 @@ class VLM():
         )
 
         if len(image_path)>=1 or len(video_path)>=1:
-            self.set_prompt(output_text[0])
+            self.set_prompt(output_text[0],image_path)
 
         return output_text

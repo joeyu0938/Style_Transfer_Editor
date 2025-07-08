@@ -20,7 +20,7 @@
         },
         "control_guidance_start": 0.0,
         "control_guidance_end": 1.0,
-        "VLM":"Qwen/Qwen2.5-VL-3B-Instruct"
+        "VLM":"Qwen/Qwen2.5-VL-0.5B-Instruct"
     },
     "Path_Setting":{
         "Image_folder":"Input/Test_All/Image",

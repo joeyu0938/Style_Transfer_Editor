@@ -8,6 +8,7 @@ from data_edit import Data_Edit
 import os
 import io
 import json
+from Model.model import Model
 from VLM import VLM
 from glob import glob
 from Tools.tool import warning,info,critical
@@ -38,6 +39,8 @@ class UI_Controller:
         config_contr = Config_controller(ui,config)
         global Vlm_contr
         Vlm_contr = VLM_controller(ui,config)
+        global Model_contr
+        Model_contr = Model_controller(ui,config)
         
 
         MainWindow.show()
@@ -379,8 +382,10 @@ class VLM_controller(VLM):
         response = self.run_vlm(self.ui.Prompt_input.text(),self.ui.Image_path.text())[0]
         self.ui.Response.setText(response)
         
-
-
+class Model_controller(Model):
+    
+    def __init__(self):
+        pass
 
 class Graphic_controller:
 
