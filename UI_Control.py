@@ -6,7 +6,8 @@ from UI import Ui_MainWindow
 from config_setup import Config_setup
 from data_edit import Data_Edit
 import os
-import io
+import gc
+import torch
 import json
 from Model.model import Model
 from VLM import VLM
@@ -362,30 +363,86 @@ class VLM_controller(VLM):
         self.ui.Image_path.setText(config.config_setting["reference_img"])
         self.ui.Prompt_input.setText("Describe image in english prompt 1 and prompt2 with less than 77 words ")
 
-        self.ui.Recursive_run.clicked.connect(self.Multi_run)
-        self.ui.Send_prompt.clicked.connect(self.Single_run)
+        recursive_Thread = QtCore.QThread()  
+        recursive_Thread.run = self.Multi_run
+        single_Thread = QtCore.QThread()  
+        single_Thread.run = self.Single_run
+
+        recursive_Thread.finished.connect(lambda: self.ui.Response.setText(f"Running multiple images recursively to prompt1 and promp2: \n {self.response_list}"))
+        single_Thread.finished.connect(lambda:  self.ui.Response.setText(self.response))
+
+        self.ui.Recursive_run.clicked.connect(lambda: recursive_Thread.start())
+        self.ui.Send_prompt.clicked.connect(lambda: single_Thread.start())
         self.ui.ClearVLM.clicked.connect(self.unload_model)
 
     def Multi_run(self):
         self.load_model()
+        self.response_list=str()
         self.images = glob(self.ui.Image_path.text()+'/*.jpg') + glob(self.ui.Image_path.text()+'/*.png')
         self.images  = sorted(self.images, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
         response_list = list()
+        output_response = str()
         print(info()+"Running VLM recursively")
         for i in self.images:
             response_list.append(self.run_vlm(self.ui.Prompt_input.text(),i)[0])
-        self.ui.Response.setText(f"Running multiple images recursively to prompt1 and promp2: \n {response_list}")
+        for i in response_list:
+            output_response = output_response + '\n'+ i 
+        self.response_list = output_response
 
     def Single_run(self):
         self.load_model()
+        self.response = ""
         print(info()+"Running VLM singly")
-        response = self.run_vlm(self.ui.Prompt_input.text(),self.ui.Image_path.text())[0]
-        self.ui.Response.setText(response)
-        
+        try: 
+            response = self.run_vlm(self.ui.Prompt_input.text(),self.ui.Image_path.text())[0]
+            self.response = response
+        except Exception as e:
+            print(critical()+f"{e}")
+            print(critical()+"Auto unloading vram")
+            self.unload_model()
+
 class Model_controller(Model):
     
-    def __init__(self):
-        pass
+    def __init__(self,ui:Ui_MainWindow,config:Config_setup):
+        super().__init__(config,ui)
+        self.ui = ui
+        Model_thread = QtCore.QThread()  
+        Model_thread.run = self.SendModelRun    
+        self.ui.Run_Process.clicked.connect(lambda: Model_thread.start())
+        self.ui.Clear_Ram.clicked.connect(self.clear_ram)
+        self.ui.Clear_Vram.clicked.connect(self.clear_vram)
+
+    def SendModelRun(self):
+        
+        self.load_model()
+        self.load_data()
+        prompt_dict = Vlm_contr.prompt_dict
+        if prompt_dict == None:
+            prompt_dict = {
+                "prompt1": self.config.config_setting["prompt"],
+                "prompt2": self.config.config_setting["prompt2"]
+            }
+            print(info()+"Using config prompt for generation")
+        else:
+            print(info()+"Using VLM generated prompt for data generation")
+
+        print(info()+ "Start Generation......")
+        self.run_model(prompt_dict,self.ui.progressBar,self.ui.lcdNumber)
+
+    def clear_vram(self):
+        print(warning()+ "Clearing vram...")
+        if hasattr(self,"model"):
+            self.model.Clear_model()
+        else:
+            gc.collect()
+            torch.cuda.empty_cache()
+        print(info()+ "Finish clearing vram...")
+
+    def clear_ram(self):
+        print(warning()+ "Clearing ram...")
+        gc.collect()
+        print(info()+ "Finish clearing ram...")
+    
 
 class Graphic_controller:
 

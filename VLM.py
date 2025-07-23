@@ -17,15 +17,20 @@ class VLM():
 
     def __init__(self,config:Config_setup):
         self.config = config
-        self.history = dict()
+        self.history = list()
         self.prompt_dict = dict()
         self.vlm_name = self.config.model_setting["VLM"]
+        self.attempt_count = 0
         self.rules = "You are a helpful assistant. If user asks for describing image, " \
         "please only output(response) in the format of json dictionary with prompt1 and prompt2 keys"
 
     def unload_model(self):
-        del self.vlm
-        del self.processor
+        if hasattr(self,"vlm"):
+            print(warning()+"Clearning vlm vram")
+            del self.vlm
+        if hasattr(self,"processor"):
+            print(warning()+"Clearning vlm processor vram")
+            del self.processor
         gc.collect()
         torch.cuda.empty_cache()
 
@@ -43,6 +48,9 @@ class VLM():
                 ]
             }
         ]
+        if len(self.history) != 0:
+            self.history.extend(message)
+            message = self.history
         if image_path!= None and len(image_path)>=1:
             message.append({"role": "system", "content": f"{self.rules}"})
             if os.path.isdir(image_path):
@@ -75,7 +83,13 @@ class VLM():
             print(info() + f"   -{self.prompt_dict[f"{image_path}"]["prompt1"]}")
             print(info() + f"   -{self.prompt_dict[f"{image_path}"]["prompt2"]}")
         except Exception as e:
-            print(critical() + "Json dictionary(Prompt1&2) from VLM incorrect (Modified prompt and run again)")
+            print(critical() + f"Json dictionary(Prompt1&2) for {image_path} from VLM incorrect (Modified prompt and run again)")
+            print(warning()+"Attempting to auto re-run again")
+            self.attempt_count+=1
+            if self.attempt_count > 10:
+                print(critical()+"Faild auto re-run... (Modified prompt and run again)")
+                return
+            self.run_vlm(prompt,image_path)      
             
 
     def run_vlm(self,prompt= "Hi who are you?",image_path = None,video_path= None,show_prompt=False):
@@ -84,7 +98,7 @@ class VLM():
         if show_prompt == True:
             print(info() + messages)
 
-        self.history[f"{datetime.now().strftime("%Y%m%d_%H%M%S")}"] = messages
+        # self.history[f"{datetime.now().strftime("%Y%m%d_%H%M%S")}"] = messages
         text = self.processor.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
         )
@@ -106,7 +120,12 @@ class VLM():
             generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
 
-        if len(image_path)>=1 or len(video_path)>=1:
+        if (image_path!= None and len(image_path)>=1) or (video_path != None and len(video_path)>=1):
             self.set_prompt(output_text[0],image_path)
+
+        self.history.append({"role": "user", "content": messages})
+        self.history.append({"role": "assistant", "content": output_text[0]})
+
+        del inputs
 
         return output_text

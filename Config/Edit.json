@@ -1,6 +1,6 @@
 {
     "System_Setting": {
-        "Task": "img_inpaint",
+        "Task": "img_cond_inpaint",
         "Show_UI": true,
         "Viewer_load_path": "./",
         "Task_status": "",
@@ -8,6 +8,7 @@
         "Device": 0
     },
     "Model_Setting": {
+        "Model": "SDXL",
         "VAE": "madebyollin/sdxl-vae-fp16-fix",
         "SDXL": "SG161222/RealVisXL_V5.0_Lightning",
         "Differential": true,
@@ -32,14 +33,14 @@
         },
         "control_guidance_start": 0.0,
         "control_guidance_end": 1.0,
-        "VLM": "Qwen/Qwen2.5-VL-0.5B-Instruct"
+        "VLM": "Qwen/Qwen2.5-VL-3B-Instruct"
     },
     "Path_Setting": {
-        "Image_folder": "Input/Test_All/Image",
-        "Mask_folder": "Input/Test_All/Mask",
-        "output_folder": "./Output/20250708_004124",
+        "Image_folder": "./Output/20250723_122548/Tmp/Image",
+        "Mask_folder": "./Output/20250723_122548/Tmp/Mask",
+        "output_folder": "./Output/20250723_122548",
         "Tmp_paths": [
-            "/Tmp/crop_vid",
+            "/Tmp/crop_output",
             "/Tmp/Mask",
             "/Tmp/Image",
             "/Tmp/depth",
@@ -51,26 +52,28 @@
     "Config_Setting": {
         "Edit_data": true,
         "VLM": true,
+        "batch_size": 1,
         "if_run_model": true,
         "resolution_formod": 1024,
+        "Is_crop": true,
         "Width": 1920,
         "Height": 1280,
         "prompt": "close-up of a human hand, detailed skin texture, natural lighting, realistic",
         "prompt2": "A close-up look of one hand wearing glove",
         "negprompt": "too bright,over saturation,distort components,gaskets,reflection,deformed iris, deformed pupils, semi-realistic, cgi, 3d, render, sketch, cartoon, drawing, anime), text, cropped, out of frame, worst quality, low quality, jpeg artifacts, ugly, duplicate, morbid, mutilated, extra fingers, mutated hands, poorly drawn hands, poorly drawn face, mutation, deformed, blurry, dehydrated, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, gross proportions, malformed limbs, missing arms, missing legs, extra arms, extra legs, fused fingers, too many fingers, long neck, UnrealisticDream",
-        "reference_img": "./Input/reference_img/Mass_gen"
+        "reference_img": "./Input/reference_img/Test_ref"
     },
     "Data_Setting": {
         "if_crop": true,
         "Canny": {
             "Detect_res": 512,
-            "Image_res": 512,
+            "Image_res": 1024,
             "Low_thres": 100,
             "High_thres": 200
         },
         "Lineart": {
             "Detect_res": 512,
-            "Image_res": 512,
+            "Image_res": 1024,
             "coarse": true
         },
         "Crop": {
@@ -80,7 +83,7 @@
         },
         "Depth": {
             "Detect_res": 512,
-            "Image_res": 512
+            "Image_res": 1024
         },
         "Dilate_Mask": {
             "Kernal": 5,
@@ -94,7 +97,7 @@
         },
         "Dwpose": {
             "Detect_res": 512,
-            "Image_res": 512,
+            "Image_res": 1024,
             "hand": true,
             "body": true,
             "face": true

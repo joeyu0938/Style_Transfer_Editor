@@ -610,7 +610,7 @@ class Ui_MainWindow(object):
         self.label_7.setText(_translate("MainWindow", "image path : "))
         self.label_8.setText(_translate("MainWindow", "user prompt : "))
         self.Recursive_run.setText(_translate("MainWindow", "Recursive Run (For image folder)"))
-        self.label_9.setText(_translate("MainWindow", "Response"))
+        self.label_9.setText(_translate("MainWindow", "Response From VLM"))
         self.Send_prompt.setText(_translate("MainWindow", "Send prompt for Data Generation"))
         self.ClearVLM.setText(_translate("MainWindow", "Clear VLM Memory"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.VLM), _translate("MainWindow", "VLM"))

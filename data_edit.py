@@ -208,6 +208,9 @@ class Data_Edit:
         
         with open(self.config.path_setting["output_folder"] + f'/Tmp/Recover.json', "w") as outfile:
             json.dump(json_dict, outfile, sort_keys=True, indent=2)
+        
+        self.config.config_setting["Is_crop"] = True
+
 
     def Inpaint(self,images,masks,radius=1.0,UI_Bar=None):
 
